@@ -1,20 +1,34 @@
-import { render, screen } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { PositionsTable } from './PositionsTable';
-import { useTradingStore } from '../../../../commons/stores';
-import { usePrices } from '../../../../queries';
+import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { vi } from "vitest";
+import { PositionsTable } from "./PositionsTable";
+import { useTradingStore } from "../../../../commons/stores";
+import { usePrices } from "../../../../queries";
+import { MidPrices } from "../../../../types";
 
 // Mock the stores and queries
-vi.mock('../../../../commons/stores', () => ({
+vi.mock("../../../../commons/stores", () => ({
   useTradingStore: vi.fn(),
 }));
 
-vi.mock('../../../../queries', () => ({
+vi.mock("../../../../queries", () => ({
   usePrices: vi.fn(),
 }));
 
-const mockUseTradingStore = useTradingStore as vi.MockedFunction<typeof useTradingStore>;
+const mockUseTradingStore = useTradingStore as vi.MockedFunction<
+  typeof useTradingStore
+>;
 const mockUsePrices = usePrices as vi.MockedFunction<typeof usePrices>;
+
+// Type for React Query result
+type QueryResult<T> = {
+  data: T | undefined;
+  isLoading: boolean;
+  error: Error | null;
+  isError: boolean;
+  isSuccess: boolean;
+  isPending: boolean;
+};
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -22,70 +36,99 @@ const createWrapper = () => {
       queries: { retry: false },
     },
   });
-  
+
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
 
-describe('PositionsTable', () => {
+describe("PositionsTable", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('shows empty state when no positions', () => {
+  it("shows empty state when no positions", () => {
     mockUseTradingStore.mockReturnValue({
       positions: [],
       closePosition: vi.fn(),
       addTrade: vi.fn(),
+      trades: [],
+      selectedSymbol: "BTC",
+      addPosition: vi.fn(),
+      setSelectedSymbol: vi.fn(),
+      getOpenPositions: vi.fn().mockReturnValue([]),
+      getTotalPnL: vi.fn().mockReturnValue(0),
     } as any);
 
     mockUsePrices.mockReturnValue({
       data: {},
-    } as any);
+      isLoading: false,
+      error: null,
+      isError: false,
+      isSuccess: true,
+      isPending: false,
+    } as QueryResult<MidPrices>);
 
     render(<PositionsTable />, { wrapper: createWrapper() });
 
-    expect(screen.getByText('No open positions')).toBeInTheDocument();
+    expect(screen.getByText("No open positions")).toBeInTheDocument();
   });
 
-  it('displays open positions with PnL calculations', () => {
+  it("displays open positions with PnL calculations", () => {
     const mockPositions = [
       {
-        id: '1',
-        symbol: 'BTC',
-        side: 'buy' as const,
+        id: "1",
+        symbol: "BTC",
+        side: "buy" as const,
         quantity: 1,
         entryPrice: 45000,
         timestamp: Date.now(),
-        status: 'open' as const,
+        status: "open" as const,
       },
     ];
 
-    const mockPrices = {
-      BTC: '50000',
+    const mockPrices: MidPrices = {
+      BTC: "50000",
     };
 
     mockUseTradingStore.mockReturnValue({
       positions: mockPositions,
       closePosition: vi.fn(),
       addTrade: vi.fn(),
+      trades: [],
+      selectedSymbol: "BTC",
+      addPosition: vi.fn(),
+      setSelectedSymbol: vi.fn(),
+      getOpenPositions: vi.fn().mockReturnValue(mockPositions),
+      getTotalPnL: vi.fn().mockReturnValue(5000),
     } as any);
 
     mockUsePrices.mockReturnValue({
       data: mockPrices,
-    } as any);
+      isLoading: false,
+      error: null,
+      isError: false,
+      isSuccess: true,
+      isPending: false,
+    } as QueryResult<MidPrices>);
 
     render(<PositionsTable />, { wrapper: createWrapper() });
 
-    expect(screen.getByText('BTC')).toBeInTheDocument();
-    expect(screen.getByText('BUY')).toBeInTheDocument();
-    expect(screen.getByText('1.000')).toBeInTheDocument();
-    expect(screen.getByText('$45,000')).toBeInTheDocument();
-    expect(screen.getByText('$50,000')).toBeInTheDocument();
-    expect(screen.getByText('+$5,000.00')).toBeInTheDocument(); // PnL
-    expect(screen.getByText('+11.11%')).toBeInTheDocument(); // PnL%
+    expect(screen.getByText("BTC")).toBeInTheDocument();
+    expect(screen.getByText("BUY")).toBeInTheDocument();
+    expect(screen.getByText("1.000")).toBeInTheDocument();
+    expect(screen.getByText("$45,000")).toBeInTheDocument();
+    expect(screen.getByText("$50,000")).toBeInTheDocument();
+    // Check for PnL text by looking at all table cells
+    const tableCells = screen.getAllByRole("cell");
+    const pnlCell = tableCells.find((cell) =>
+      cell.textContent?.includes("+$5000.00")
+    );
+    const pnlPercentCell = tableCells.find((cell) =>
+      cell.textContent?.includes("+11.11%")
+    );
+
+    expect(pnlCell).toBeTruthy();
+    expect(pnlPercentCell).toBeTruthy();
   });
 });

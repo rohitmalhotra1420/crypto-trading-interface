@@ -1,15 +1,18 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { TradeForm } from './TradeForm';
-import { useTradingStore } from '../../../../commons/stores';
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { vi } from "vitest";
+import { TradeForm } from "./TradeForm";
+import { useTradingStore } from "../../../../commons/stores";
 
 // Mock the store
-vi.mock('../../../../commons/stores', () => ({
+vi.mock("../../../../commons/stores", () => ({
   useTradingStore: vi.fn(),
 }));
 
-const mockUseTradingStore = useTradingStore as vi.MockedFunction<typeof useTradingStore>;
+const mockUseTradingStore = useTradingStore as vi.MockedFunction<
+  typeof useTradingStore
+>;
 
-describe('TradeForm', () => {
+describe("TradeForm", () => {
   const mockAddPosition = vi.fn();
   const mockAddTrade = vi.fn();
 
@@ -18,64 +21,71 @@ describe('TradeForm', () => {
     mockUseTradingStore.mockReturnValue({
       addPosition: mockAddPosition,
       addTrade: mockAddTrade,
+      positions: [],
+      trades: [],
+      selectedSymbol: "BTC",
+      closePosition: vi.fn(),
+      setSelectedSymbol: vi.fn(),
+      getOpenPositions: vi.fn().mockReturnValue([]),
+      getTotalPnL: vi.fn().mockReturnValue(0),
     } as any);
   });
 
-  it('renders trade form with default values', () => {
+  it("renders trade form with default values", () => {
     render(<TradeForm symbol="BTC" currentPrice={50000} />);
 
-    expect(screen.getByText('Place Trade')).toBeInTheDocument();
-    expect(screen.getByText('BTC @ $50,000')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('1')).toBeInTheDocument();
-    expect(screen.getByText('Buy BTC')).toBeInTheDocument();
+    expect(screen.getByText("Place Trade")).toBeInTheDocument();
+    expect(screen.getByText("BTC @ $50,000")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1")).toBeInTheDocument();
+    expect(screen.getByText("Buy BTC")).toBeInTheDocument();
   });
 
-  it('switches between buy and sell sides', () => {
+  it("switches between buy and sell sides", () => {
     render(<TradeForm symbol="BTC" currentPrice={50000} />);
 
-    const sellButton = screen.getByText('Sell');
+    const sellButton = screen.getByText("Sell");
     fireEvent.click(sellButton);
 
-    expect(screen.getByText('Sell BTC')).toBeInTheDocument();
+    expect(screen.getByText("Sell BTC")).toBeInTheDocument();
   });
 
-  it('calculates estimated value correctly', () => {
+  it("calculates estimated value correctly", () => {
     render(<TradeForm symbol="BTC" currentPrice={50000} />);
 
-    const quantityInput = screen.getByLabelText('Quantity');
-    fireEvent.change(quantityInput, { target: { value: '2' } });
+    const quantityInput = screen.getByLabelText("Quantity");
+    fireEvent.change(quantityInput, { target: { value: "2" } });
 
-    expect(screen.getByText('Est. value: $100,000')).toBeInTheDocument();
+    expect(screen.getByText("Est. value: $100,000")).toBeInTheDocument();
   });
 
-  it('submits trade with correct data', async () => {
+  it("submits trade with correct data", async () => {
     render(<TradeForm symbol="BTC" currentPrice={50000} />);
 
-    const quantityInput = screen.getByLabelText('Quantity');
-    fireEvent.change(quantityInput, { target: { value: '0.5' } });
+    const quantityInput = screen.getByLabelText("Quantity");
+    fireEvent.change(quantityInput, { target: { value: "0.5" } });
 
-    const submitButton = screen.getByText('Buy BTC');
+    const submitButton = screen.getByText("Buy BTC");
     fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(mockAddPosition).toHaveBeenCalledWith(
         expect.objectContaining({
-          symbol: 'BTC',
-          side: 'buy',
+          symbol: "BTC",
+          side: "buy",
           quantity: 0.5,
           entryPrice: 50000,
-          status: 'open',
+          status: "open",
         })
       );
     });
 
     expect(mockAddTrade).toHaveBeenCalledWith(
       expect.objectContaining({
-        symbol: 'BTC',
-        side: 'buy',
+        symbol: "BTC",
+        side: "buy",
         quantity: 0.5,
         price: 50000,
-        type: 'open',
+        type: "open",
       })
     );
   });
