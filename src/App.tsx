@@ -1,12 +1,12 @@
-import { useEffect } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Layout } from './commons/components';
-import { MarketList } from './modules/markets';
-import { TradeForm } from './modules/trading';
-import { PositionsTable, TradeHistory } from './modules/positions';
-import { PriceChart } from './modules/charts';
-import { usePrices } from './queries';
-import { useTradingStore, useThemeStore, applyTheme } from './commons/stores';
+import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Layout } from "./commons/components";
+import { MarketList } from "./modules/markets";
+import { TradeForm } from "./modules/trading";
+import { PositionsTable, TradeHistory } from "./modules/positions";
+import { PriceChart } from "./modules/charts";
+import { usePrices } from "./queries";
+import { useTradingStore, useThemeStore, applyTheme } from "./commons/stores";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,7 +21,7 @@ function TradingApp() {
   const { selectedSymbol, setSelectedSymbol } = useTradingStore();
   const { data: prices } = usePrices();
 
-  const currentPrice = prices ? parseFloat(prices[selectedSymbol] || '0') : 0;
+  const currentPrice = prices ? parseFloat(prices[selectedSymbol] || "0") : 0;
 
   const sidebar = (
     <MarketList
@@ -40,10 +40,7 @@ function TradingApp() {
           </div>
           <div>
             {currentPrice > 0 && (
-              <TradeForm
-                symbol={selectedSymbol}
-                currentPrice={currentPrice}
-              />
+              <TradeForm symbol={selectedSymbol} currentPrice={currentPrice} />
             )}
           </div>
         </div>
@@ -67,15 +64,15 @@ function ThemeProvider() {
 
   // Listen for system theme changes
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      if (theme === 'system') {
+      if (theme === "system") {
         applyTheme();
       }
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme]);
 
   return null;

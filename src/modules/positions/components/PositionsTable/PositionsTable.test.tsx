@@ -58,6 +58,9 @@ describe("PositionsTable", () => {
       setSelectedSymbol: vi.fn(),
       getOpenPositions: vi.fn().mockReturnValue([]),
       getTotalPnL: vi.fn().mockReturnValue(0),
+      getAggregatedPositions: vi.fn().mockReturnValue([]),
+      getAvailableQuantity: vi.fn().mockReturnValue(0),
+      canSell: vi.fn().mockReturnValue(false),
     } as any);
 
     mockUsePrices.mockReturnValue({
@@ -87,6 +90,17 @@ describe("PositionsTable", () => {
       },
     ];
 
+    const mockAggregatedPositions = [
+      {
+        symbol: "BTC",
+        buyQuantity: 1,
+        sellQuantity: 0,
+        netQuantity: 1,
+        avgBuyPrice: 45000,
+        avgSellPrice: 0,
+      },
+    ];
+
     const mockPrices: MidPrices = {
       BTC: "50000",
     };
@@ -101,6 +115,9 @@ describe("PositionsTable", () => {
       setSelectedSymbol: vi.fn(),
       getOpenPositions: vi.fn().mockReturnValue(mockPositions),
       getTotalPnL: vi.fn().mockReturnValue(5000),
+      getAggregatedPositions: vi.fn().mockReturnValue(mockAggregatedPositions),
+      getAvailableQuantity: vi.fn().mockReturnValue(1),
+      canSell: vi.fn().mockReturnValue(true),
     } as any);
 
     mockUsePrices.mockReturnValue({
@@ -115,7 +132,7 @@ describe("PositionsTable", () => {
     render(<PositionsTable />, { wrapper: createWrapper() });
 
     expect(screen.getByText("BTC")).toBeInTheDocument();
-    expect(screen.getByText("BUY")).toBeInTheDocument();
+    expect(screen.getByText("LONG")).toBeInTheDocument();
     expect(screen.getByText("1.000")).toBeInTheDocument();
     expect(screen.getByText("$45,000")).toBeInTheDocument();
     expect(screen.getByText("$50,000")).toBeInTheDocument();
