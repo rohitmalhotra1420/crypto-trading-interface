@@ -76,9 +76,8 @@ describe("TradeForm", () => {
     expect(screen.getByText("5.500")).toBeInTheDocument();
   });
 
-  it("prevents selling more than available quantity", () => {
+  it("allows short selling when selling more than available", () => {
     mockGetAvailableQuantity.mockReturnValue(1);
-    mockCanSell.mockReturnValue(false);
 
     render(<TradeForm symbol="BTC" currentPrice={50000} />);
 
@@ -88,10 +87,8 @@ describe("TradeForm", () => {
     const quantityInput = screen.getByLabelText("Quantity");
     fireEvent.change(quantityInput, { target: { value: "2" } });
 
-    expect(
-      screen.getByText("Insufficient balance. You can only sell 1.000 BTC")
-    ).toBeInTheDocument();
-    expect(screen.getByText("Short Sell BTC")).toBeDisabled();
+    expect(screen.getByText("(Short selling 1.000 BTC)")).toBeInTheDocument();
+    expect(screen.getByText("Short Sell BTC")).not.toBeDisabled();
   });
 
   it("submits buy trade with correct data", async () => {
@@ -129,9 +126,8 @@ describe("TradeForm", () => {
     );
   });
 
-  it("submits sell trade with correct data when sufficient balance", async () => {
-    mockGetAvailableQuantity.mockReturnValue(2);
-    mockCanSell.mockReturnValue(true);
+  it("submits short sell trade when selling more than available", async () => {
+    mockGetAvailableQuantity.mockReturnValue(0.5);
 
     render(<TradeForm symbol="BTC" currentPrice={50000} />);
 
@@ -141,9 +137,10 @@ describe("TradeForm", () => {
     const quantityInput = screen.getByLabelText("Quantity");
     fireEvent.change(quantityInput, { target: { value: "1" } });
 
-    const submitButton = screen.getByText("Sell BTC");
+    const submitButton = screen.getByText("Short Sell BTC");
     fireEvent.click(submitButton);
 
+    // Should call addPosition and addTrade for short selling
     await waitFor(() => {
       expect(mockAddPosition).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -165,25 +162,5 @@ describe("TradeForm", () => {
         type: "open",
       })
     );
-  });
-
-  it("does not submit sell trade when insufficient balance", async () => {
-    mockGetAvailableQuantity.mockReturnValue(0.5);
-    mockCanSell.mockReturnValue(false);
-
-    render(<TradeForm symbol="BTC" currentPrice={50000} />);
-
-    const sellButton = screen.getByText("Sell");
-    fireEvent.click(sellButton);
-
-    const quantityInput = screen.getByLabelText("Quantity");
-    fireEvent.change(quantityInput, { target: { value: "1" } });
-
-    const submitButton = screen.getByText("Short Sell BTC");
-    fireEvent.click(submitButton);
-
-    // Should not call addPosition or addTrade
-    expect(mockAddPosition).not.toHaveBeenCalled();
-    expect(mockAddTrade).not.toHaveBeenCalled();
   });
 });

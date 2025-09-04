@@ -18,24 +18,13 @@ export function TradeForm({
   const [quantity, setQuantity] = useState<string>("1");
   const [submitting, setSubmitting] = useState(false);
 
-  const {
-    addPosition,
-    addTrade,
-    getAvailableQuantity,
-    getOpenPositions,
-    closePosition,
-    updatePosition,
-  } = useTradingStore();
+  const { addPosition, addTrade, getAvailableQuantity } = useTradingStore();
 
   const availableQuantity = getAvailableQuantity(symbol);
   const requestedQuantity = parseFloat(quantity) || 0;
   const isShortSelling =
     side === "sell" && requestedQuantity > availableQuantity;
-  const sellError =
-    side === "sell" &&
-    requestedQuantity > 0 &&
-    availableQuantity > 0 &&
-    requestedQuantity > availableQuantity;
+  // Remove sellError since we allow short selling
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +41,7 @@ export function TradeForm({
         `Short selling ${qty - getAvailableQuantity(symbol)} ${symbol}`
       );
     }
+    // Remove the validation that prevents short selling
 
     setSubmitting(true);
 
@@ -86,74 +76,32 @@ export function TradeForm({
         addPosition(position);
         addTrade(trade);
       } else {
-        // Selling - should close existing positions
-        const openPositions = getOpenPositions().filter(
-          (p) => p.symbol === symbol && p.side === "buy"
-        );
+        // Selling - create a short position (don't close existing positions)
+        const positionId = generateId();
 
-        if (openPositions.length > 0) {
-          // Close existing positions
-          let remainingQty = qty;
+        const position: Position = {
+          id: positionId,
+          symbol,
+          side: "sell",
+          quantity: qty,
+          entryPrice: currentPrice,
+          timestamp: now,
+          status: "open",
+        };
 
-          for (const position of openPositions) {
-            if (remainingQty <= 0) break;
+        const trade: Trade = {
+          id: generateId(),
+          symbol,
+          side: "sell",
+          quantity: qty,
+          price: currentPrice,
+          timestamp: now,
+          type: "open",
+          positionId,
+        };
 
-            const closeQty = Math.min(remainingQty, position.quantity);
-
-            const trade: Trade = {
-              id: generateId(),
-              symbol,
-              side: "sell",
-              quantity: closeQty,
-              price: currentPrice,
-              timestamp: now,
-              type: "close",
-              positionId: position.id,
-            };
-
-            addTrade(trade);
-
-            // Update position quantity
-            if (closeQty === position.quantity) {
-              // Close the entire position
-              closePosition(position.id, currentPrice, now);
-            } else {
-              // Partial close - reduce quantity
-              updatePosition(position.id, {
-                quantity: position.quantity - closeQty,
-              });
-            }
-
-            remainingQty -= closeQty;
-          }
-        } else {
-          // No existing positions to close - create a short position
-          const positionId = generateId();
-
-          const position: Position = {
-            id: positionId,
-            symbol,
-            side: "sell",
-            quantity: qty,
-            entryPrice: currentPrice,
-            timestamp: now,
-            status: "open",
-          };
-
-          const trade: Trade = {
-            id: generateId(),
-            symbol,
-            side: "sell",
-            quantity: qty,
-            price: currentPrice,
-            timestamp: now,
-            type: "open",
-            positionId,
-          };
-
-          addPosition(position);
-          addTrade(trade);
-        }
+        addPosition(position);
+        addTrade(trade);
       }
 
       setQuantity("1");
@@ -241,11 +189,7 @@ export function TradeForm({
             min="0.001"
             step="0.001"
             required
-            className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-              sellError
-                ? "border-red-500 dark:border-red-500"
-                : "border-gray-300 dark:border-gray-600"
-            }`}
+            className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white border-gray-300 dark:border-gray-600`}
           />
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Est. value: ${estimatedValue.toLocaleString()}
@@ -262,19 +206,11 @@ export function TradeForm({
               )}
             </div>
           )}
-          {sellError && (
-            <div className="mt-1 text-xs text-red-600 dark:text-red-400">
-              Insufficient balance. You can only sell{" "}
-              {availableQuantity.toFixed(3)} {symbol}
-            </div>
-          )}
         </div>
 
         <button
           type="submit"
-          disabled={
-            submitting || !quantity || parseFloat(quantity) <= 0 || sellError
-          }
+          disabled={submitting || !quantity || parseFloat(quantity) <= 0}
           className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
             side === "buy"
               ? "bg-green-600 hover:bg-green-700 disabled:bg-green-300"
